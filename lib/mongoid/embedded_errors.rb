@@ -17,14 +17,20 @@ module Mongoid::EmbeddedErrors
       embedded_relations.each do |name, metadata|
         # name is something like pages or sections
         # if there is an 'is invalid' message for the relation then let's work it:
-        next unless Array(public_send(name)).any? { |doc| doc.errors.any? }
+        relation_docs = begin
+          Array(public_send(name))
+        rescue ActiveModel::MissingAttributeError, Mongoid::Errors::AttributeNotLoaded
+          next
+        end
+
+        next unless relation_docs.any? { |doc| doc.errors.any? }
 
         # first delete the generic 'is invalid' error for the relation
         errs.delete name.to_sym, :invalid
         errs.delete name.to_sym if errs[name].empty?
 
         # next, loop through each of the relations (pages, sections, etc...)
-        [public_send(name)].flatten.reject(&:nil?).each_with_index do |rel, i|
+        relation_docs.flatten.reject(&:nil?).each_with_index do |rel, i|
           next unless rel.errors.any?
 
           # get each of their individual message and add them to the parent's errors:

@@ -11,3 +11,5 @@ test:
       database: mongoid_embedded_errors_test
       hosts:
         - localhost:27017
+      options:
+        connect: :direct

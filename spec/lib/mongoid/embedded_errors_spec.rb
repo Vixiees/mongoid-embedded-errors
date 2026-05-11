@@ -85,5 +85,27 @@ RSpec.describe Mongoid::EmbeddedErrors do
         expect(article.errors).to be_empty
       end
     end
+
+    context 'when document is loaded with a without() projection that excludes an embedded relation',
+            :do_not_validate do
+      let(:pages) { [Page.new(title: 'Test page')] }
+
+      # Exclude :annotation (no presence validator) so valid? does not raise before
+      # errors_with_embedded_errors runs. Excluding :pages would trigger the
+      # `validates :pages, presence: true` validator before our rescue can act.
+      before { Article.new(name: 'Test', summary: '-', pages: pages).save!(validate: false) }
+
+      subject(:projected) { Article.without(:annotation).first }
+
+      it 'does not raise when calling valid?' do
+        expect { projected.valid? }.not_to raise_error
+      end
+
+      it 'still propagates errors for loaded embedded relations' do
+        projected.pages.build
+        projected.valid?
+        expect(projected.errors[:'pages[1].title']).to include "can't be blank"
+      end
+    end
   end
 end
